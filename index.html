@@ -1,136 +1,163 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AI Deriv Trader</title>
 <style>
-*{box-sizing:border-box;font-family:system-ui,sans-serif;margin:0;padding:0;}
-body{background:#0f111a;color:#e6e6e6;padding:16px;max-width:800px;margin:0 auto;}
-h1{color:#4ade80;font-size:1.4rem;}
-.card{background:#1a1d2b;border-radius:12px;padding:16px;margin:10px 0;}
-.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
-.stat{background:#24283b;padding:12px;border-radius:8px;}
-button{background:#16a34a;color:white;border:none;padding:12px;border-radius:8px;font-size:1rem;cursor:pointer;}
+*{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,sans-serif;}
+body{background:#0f111a;color:#fff;padding:20px;max-width:600px;margin:0 auto;}
+h1{color:#4ade80;margin-bottom:20px;}
+.box{background:#1a1d2b;padding:20px;border-radius:12px;margin-bottom:15px;}
+button{background:#16a34a;color:#fff;border:none;padding:14px 24px;border-radius:8px;font-size:18px;cursor:pointer;width:100%;}
 button.running{background:#dc2626;}
-select,input{background:#24283b;border:1px solid #374151;color:white;padding:10px;border-radius:6px;width:100%;margin-top:4px;}
-.log{background:#0a0c14;padding:12px;border-radius:8px;font-family:monospace;font-size:0.8rem;max-height:250px;overflow-y:auto;margin-top:10px;}
-.green{color:#4ade80;}.red{color:#f87171;}.yellow{color:#facc15;}.blue{color:#60a5fa;}
+input,select{width:100%;padding:12px;margin:8px 0;background:#24283b;border:none;color:#fff;border-radius:6px;}
+.log{background:#0a0c14;padding:15px;border-radius:8px;margin-top:15px;font-family:monospace;font-size:13px;max-height:300px;overflow-y:auto;}
+.ok{color:#4ade80;}
+.no{color:#f87171;}
+.info{color:#60a5fa;}
 </style>
 </head>
 <body>
 
-<h1>🎯 AI Deriv Smart Trader</h1>
+<h1>🎯 AI Deriv Trader — LIVE</h1>
 
-<div class="card">
-  <h3>🔌 Connection</h3>
+<div class="box">
+  <h3>Connection</h3>
   <select id="symbol">
-    <option value="R_100" selected>Volatility 100</option>
+    <option value="R_100">Volatility 100</option>
     <option value="R_75">Volatility 75</option>
   </select>
   <br><br>
-  <button id="btn" onclick="go()">▶ START TRADER</button>
+  <button id="btn" onclick="startStop()">▶ START TRADER</button>
 </div>
 
-<div class="card">
-  <h3>📊 Live Data</h3>
-  <div class="grid">
-    <div class="stat"><b>Last Digit</b><br><span id="d" class="yellow">—</span></div>
-    <div class="stat"><b>Ticks</b><br><span id="c" class="blue">0</span></div>
-    <div class="stat"><b>Recommendation</b><br><span id="rec" class="green">—</span></div>
-    <div class="stat"><b>Win Rate</b><br><span id="wr" class="green">0%</span></div>
-  </div>
+<div class="box">
+  <h3>Live Data</h3>
+  <p style="font-size:24px;margin:10px 0;">Last Digit: <span id="digit" class="ok">—</span></p>
+  <p>Ticks Received: <span id="count">0</span></p>
+  <p>Recommendation: <span id="signal">—</span></p>
 </div>
 
-<div class="card">
-  <h3>📜 Log</h3>
+<div class="box">
+  <h3>Log</h3>
   <div class="log" id="log"></div>
 </div>
 
 <script>
-let ws, hist=[], total=0, wins=0, running=false;
-const logDiv=document.getElementById('log');
+let ws = null;
+let running = false;
+let history = [];
+const logDiv = document.getElementById('log');
 
-function log(m,t='info'){
-  const time=new Date().toLocaleTimeString();
-  logDiv.innerHTML=`<div>[${time}] ${m}</div>`+logDiv.innerHTML;
+function log(text, type='info') {
+  const t = new Date().toLocaleTimeString();
+  logDiv.innerHTML = `<div class="${type}">[${t}] ${text}</div>` + logDiv.innerHTML;
 }
 
-function connect(){
-  return new Promise((res,rej)=>{
-    // ✅ Direct official endpoint — most reliable
-    ws=new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
-    ws.onopen=()=>{log('✅ Connected!','green');res();};
-    ws.onclose=()=>{log('🔌 Closed','yellow');running=false;};
-    ws.onerror=()=>{log('❌ Connection blocked — use Chrome or app.deriv.com','red');rej();};
-    ws.onmessage=handle;
+function connect() {
+  return new Promise((resolve, reject) => {
+    log('Connecting to Deriv...', 'info');
+    ws = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
+    
+    ws.onopen = () => {
+      log('✅ CONNECTED SUCCESSFULLY!', 'ok');
+      resolve();
+    };
+    
+    ws.onclose = () => {
+      log('🔌 Connection closed', 'no');
+      running = false;
+      document.getElementById('btn').textContent = '▶ START TRADER';
+      document.getElementById('btn').classList.remove('running');
+    };
+    
+    ws.onerror = (e) => {
+      log('❌ Connection failed — try Chrome browser', 'no');
+      reject(e);
+    };
+    
+    ws.onmessage = handleMessage;
   });
 }
 
-function handle(e){
-  const d=JSON.parse(e.data);
-  if(d.msg_type==='tick' && d.tick){
-    const digit=d.tick.last_digit;
-    hist.push(digit);
-    if(hist.length>30)hist.shift();
-    document.getElementById('d').textContent=digit;
-    document.getElementById('c').textContent=hist.length;
-    if(hist.length>=10)analyze();
-  }
-  if(d.error)log(`⚠️ ${d.error.message}`,'yellow');
-}
-
-function analyze(){
-  const freq=Array(10).fill(0);
-  hist.forEach(d=>freq[d]++);
-  const hot=[...Array(10).keys()].sort((a,b)=>freq[b]-freq[a]).slice(0,2);
-  
-  let even=0, odd=0, es=0, os=0;
-  for(let i=hist.length-1;i>=0;i--){
-    if(hist[i]%2===0){if(os)break;es++;}
-    else{if(es)break;os++;}
-  }
-  
-  let up=0, down=0;
-  for(let i=1;i<hist.length;i++){
-    if(hist[i]>hist[i-1])up++;
-    else if(hist[i]<hist[i-1])down++;
-  }
-  
-  let rec='Wait...';
-  if(es>=3)rec='ODD';
-  if(os>=3)rec='EVEN';
-  if(freq[hot[0]]>=4)rec=`MATCH ${hot[0]}`;
-  
-  document.getElementById('rec').textContent=rec;
-  
-  if(rec!=='Wait...'){
-    total++;
-    const ok=Math.random()<0.72;
-    if(ok){wins++;log(`✅ ${rec} → WON`,'green');}
-    else log(`❌ ${rec} → LOST`,'red');
-    document.getElementById('wr').textContent=Math.round(wins/total*100)+'%';
-  }
-}
-
-async function go(){
-  if(!running){
-    running=true;
-    document.getElementById('btn').textContent='⏹ STOP';
-    document.getElementById('btn').classList.add('running');
-    try{
-      await connect();
-      ws.send(JSON.stringify({ticks:document.getElementById('symbol').value,subscribe:1}));
-      log('🤖 Listening for ticks...','blue');
-    }catch(e){
-      running=false;
-      document.getElementById('btn').textContent='▶ START TRADER';
+function handleMessage(msg) {
+  try {
+    const data = JSON.parse(msg.data);
+    
+    if(data.msg_type === 'tick' && data.tick) {
+      const digit = data.tick.last_digit;
+      history.push(digit);
+      if(history.length > 30) history.shift();
+      
+      document.getElementById('digit').textContent = digit;
+      document.getElementById('count').textContent = history.length;
+      
+      if(history.length >= 10) analyze();
     }
-  }else{
-    ws.close();ws=null;running=false;
-    document.getElementById('btn').textContent='▶ START TRADER';
+    
+    if(data.error) {
+      log(`API Error: ${data.error.message}`, 'no');
+    }
+  } catch(e) {
+    log(`Error: ${e.message}`, 'no');
+  }
+}
+
+function analyze() {
+  // Count each digit
+  const freq = Array(10).fill(0);
+  history.forEach(d => freq[d]++);
+  
+  // Find most frequent
+  let maxCount = 0, hotDigit = 0;
+  for(let i = 0; i < 10; i++) {
+    if(freq[i] > maxCount) {
+      maxCount = freq[i];
+      hotDigit = i;
+    }
+  }
+  
+  // Even/Odd streak
+  let evenStreak = 0, oddStreak = 0;
+  for(let i = history.length - 1; i >= 0; i--) {
+    if(history[i] % 2 === 0) { if(oddStreak) break; evenStreak++; }
+    else { if(evenStreak) break; oddStreak++; }
+  }
+  
+  // Make recommendation
+  let signal = 'Collecting...';
+  if(maxCount >= 4) signal = `MATCH ${hotDigit} (freq: ${maxCount})`;
+  else if(evenStreak >= 3) signal = 'BET ODD';
+  else if(oddStreak >= 3) signal = 'BET EVEN';
+  
+  document.getElementById('signal').textContent = signal;
+}
+
+async function startStop() {
+  if(!running) {
+    running = true;
+    document.getElementById('btn').textContent = '⏹ STOP TRADER';
+    document.getElementById('btn').classList.add('running');
+    
+    try {
+      await connect();
+      ws.send(JSON.stringify({
+        ticks: document.getElementById('symbol').value,
+        subscribe: 1
+      }));
+      log('📡 Subscribed to ticks — waiting for data...', 'info');
+    } catch(e) {
+      running = false;
+      document.getElementById('btn').textContent = '▶ START TRADER';
+      document.getElementById('btn').classList.remove('running');
+    }
+  } else {
+    if(ws) ws.close();
+    running = false;
+    document.getElementById('btn').textContent = '▶ START TRADER';
     document.getElementById('btn').classList.remove('running');
-    log('⏹ Stopped','yellow');
+    log('⏹ Stopped by user', 'info');
   }
 }
 </script>
