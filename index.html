@@ -1,268 +1,99 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Advanced Deriv Matches & Differs Analysis Tool</title>
-<style>
-:root{
-  --bg:#0b1220;--card:#141e30;--card2:#1a2744;
-  --accent:#00d4ff;--ok:#10b981;--warn:#f59e0b;--bad:#ef4444;
-  --txt:#e2e8f0;--muted:#94a3b8;--border:#1e3a5f
-}
-*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,sans-serif}
-body{background:var(--bg);color:var(--txt);padding:12px;max-width:1400px;margin:0 auto}
-h1{text-align:center;font-size:20px;margin-bottom:16px;color:var(--accent)}
-h2{font-size:15px;margin:12px 0 8px;border-bottom:1px solid var(--border);padding-bottom:4px;color:var(--accent)}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
-.card{background:var(--card);border-radius:10px;padding:14px;border:1px solid var(--border)}
-.card2{background:var(--card2);border-radius:8px;padding:10px;margin:6px 0}
-.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.badge{padding:4px 8px;border-radius:4px;font-size:12px;font-weight:600}
-.badge-ok{background:rgba(16,185,129,.15);color:var(--ok)}
-.badge-warn{background:rgba(245,158,11,.15);color:var(--warn)}
-.badge-bad{background:rgba(239,68,68,.15);color:var(--bad)}
-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:6px}
-th,td{padding:6px 4px;text-align:center;border-bottom:1px solid var(--border)}
-th{color:var(--muted)}
-.heat-hot{background:rgba(16,185,129,.25)}
-.heat-cold{background:rgba(239,68,68,.25)}
-.heat-overdue{background:rgba(245,158,11,.25)}
-select,button{background:var(--card2);border:1px solid var(--border);color:var(--txt);padding:8px 10px;border-radius:6px;font-size:13px}
-button{cursor:pointer;font-weight:600;border:none}
-.btn-go{background:linear-gradient(135deg,#00d4ff,#2563eb)}
-.btn-stop{background:var(--bad)}
-button:disabled{opacity:.5;cursor:not-allowed}
-.stat-line{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.6}
-.alert{border-left:3px solid var(--warn);padding:8px 10px;margin:8px 0;background:rgba(245,158,11,.08);font-size:12px}
-.risk{border-left:3px solid var(--bad);padding:8px 10px;margin:8px 0;background:rgba(239,68,68,.08);font-size:12px}
-.score-val{font-size:24px;font-weight:bold}
-.hidden{display:none!important}
-</style>
-</head>
-<body>
+<!doctype html>
+<html lang="en" dir="auto" class="light">
+    <head>
+        <!-- Google Tag Manager -->
+        <script>
+            (function (w, d, s, l, i) {
+                w[l] = w[l] || [];
+                w[l].push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
+                var f = d.getElementsByTagName(s)[0],
+                    j = d.createElement(s),
+                    dl = l != 'dataLayer' ? '&l=' + l : '';
+                j.async = true;
+                j.src = 'https://www.googletagmanager.com/gtm.js?id=' + i + dl;
+                f.parentNode.insertBefore(j, f);
+            })(window, document, 'script', 'dataLayer', 'GTM-KV9538TF');
+        </script>
+        <!-- End Google Tag Manager -->
 
-<h1>🎯 Advanced Deriv Matches & Differs Analysis Tool</h1>
+        <meta charset="UTF-8" />
+        <link rel="icon" type="image/svg+xml" href="<%= assetPrefix %>/deriv-logo.svg" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+        <meta name="title" content="Automate Your Trades | Deriv Bot" />
+        <meta
+            name="description"
+            content="Import your current bot or learn how to create a trading bot from scratch with our detailed guides, FAQs, and tutorials. Start with a quick strategy!"
+        />
+        <meta property="og:title" content="Deriv Bot" />
+        <meta
+            property="og:description"
+            content="Import your current bot or learn how to create a trading bot from scratch with our detailed guides, FAQs, and tutorials. Start with a quick strategy!"
+        />
+        <title>Automate Your Trades | Deriv Bot</title>
+        <style>
+            :root {
+                font-size: 62.5%;
+            }
+        </style>
+    </head>
 
-<div class="card">
-  <h2>Market Status & Data Feed</h2>
-  <div class="row" style="margin-bottom:10px">
-    <select id="symbolSel" style="flex:1;min-width:160px">
-      <option value="R_100">Volatility 100 (1s)</option>
-      <option value="R_75">Volatility 75 (1s)</option>
-      <option value="R_50">Volatility 50 (1s)</option>
-      <option value="R_25">Volatility 25 (1s)</option>
-      <option value="R_10">Volatility 10 (1s)</option>
-    </select>
-    <select id="windowSel" style="max-width:140px">
-      <option value="10">Last 10</option>
-      <option value="25">Last 25</option>
-      <option value="50">Last 50</option>
-      <option value="100" selected>Last 100</option>
-      <option value="250">Last 250</option>
-      <option value="500">Last 500</option>
-    </select>
-    <button id="goBtn" class="btn-go">▶ START</button>
-    <button id="stopBtn" class="btn-stop" disabled>⏹ STOP</button>
-  </div>
-  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr))">
-    <div class="card2"><div style="font-size:11px;color:var(--muted)">Symbol</div><div id="currSymbol">—</div></div>
-    <div class="card2"><div style="font-size:11px;color:var(--muted)">Price</div><div id="currPrice">—</div></div>
-    <div class="card2"><div style="font-size:11px;color:var(--muted)">Last Digit</div><div id="lastDigit" style="font-size:20px;font-weight:bold">—</div></div>
-    <div class="card2"><div style="font-size:11px;color:var(--muted)">Sample Size</div><div id="sampleSize">0</div></div>
-  </div>
-  <div id="connStatus" class="stat-line">Status: Disconnected — Click START to connect</div>
-</div>
+    <body class="body theme theme--light">
+        <!-- Google Tag Manager (noscript) -->
+        <noscript
+            ><iframe
+                src="https://www.googletagmanager.com/ns.html?id=GTM-KV9538TF"
+                height="0"
+                width="0"
+                style="display: none; visibility: hidden"
+            ></iframe
+        ></noscript>
+        <!-- End Google Tag Manager (noscript) -->
 
-<div class="card">
-  <h2>Digit Heatmap (0–9)</h2>
-  <table>
-    <thead><tr>
-      <th>Digit</th><th>Freq %</th><th>Match %</th><th>Differ %</th><th>Absence</th><th>Z-Score</th><th>Status</th>
-    </tr></thead>
-    <tbody id="heatBody">
-      <tr><td colspan="7" style="color:var(--muted)">Waiting for data...</td></tr>
-    </tbody>
-  </table>
-  <div class="stat-line">Baseline: ~10.0% per digit</div>
-</div>
-
-<div class="grid">
-  <div class="card">
-    <h2>Hot / Cold / Overdue</h2>
-    <div id="hotList" class="card2"><div style="color:var(--ok);font-weight:600">🔥 Hot:</div><div class="stat-line">Collecting data...</div></div>
-    <div id="coldList" class="card2"><div style="color:var(--bad);font-weight:600">❄️ Cold:</div><div class="stat-line">Collecting data...</div></div>
-    <div id="overdueList" class="card2">
-      <div style="color:var(--warn);font-weight:600">⚠️ Overdue:</div>
-      <div class="alert">Overdue ≠ guaranteed reversal — longer gaps do NOT ensure appearance</div>
-    </div>
-  </div>
-  <div class="card">
-    <h2>Matches ↔ Differs Balance</h2>
-    <div style="height:40px;display:flex;align-items:center;background:linear-gradient(to right,var(--ok),#111827,var(--bad));border-radius:6px;margin:10px 0;position:relative">
-      <div id="balancePtr" style="position:absolute;top:0;bottom:0;width:2px;background:#fff;left:50%"></div>
-    </div>
-    <div class="row" style="justify-content:space-between;font-size:12px">
-      <div>MATCHES</div>
-      <div id="balanceLabel" class="badge badge-ok">BALANCED</div>
-      <div>DIFFERS</div>
-    </div>
-  </div>
-</div>
-
-<div class="card">
-  <h2>Market Insight & Signal</h2>
-  <div class="grid" style="grid-template-columns:1fr 2fr">
-    <div class="card2" style="text-align:center">
-      <div style="font-size:13px;color:var(--muted)">Insight Score</div>
-      <div class="score-val" id="insightScore">—</div>
-      <div style="font-size:11px;color:var(--muted)">/ 100</div>
-    </div>
-    <div id="signalBox">
-      <div style="color:var(--muted)">Start data feed to generate signal...</div>
-    </div>
-  </div>
-  <div class="risk" style="margin-top:10px">
-    ⚠️ <strong>Risk Warning:</strong> Historical statistics do NOT guarantee future results. All trading involves risk.
-  </div>
-</div>
-
-<script>
-const BASELINE = 0.1;
-let ws = null, ticks = [], isRunning = false;
-const $ = id => document.getElementById(id);
-const goBtn = $('goBtn'), stopBtn = $('stopBtn');
-const symbolSel = $('symbolSel'), windowSel = $('windowSel');
-
-function getDigit(price){
-  if(!price) return null;
-  return parseInt(String(price).slice(-1),10);
-}
-function mean(arr){return arr.reduce((a,b)=>a+b,0)/arr.length}
-function std(arr){
-  const m = mean(arr);
-  return Math.sqrt(arr.reduce((s,x)=>s+(x-m)**2,0)/arr.length);
-}
-function zScore(val){
-  const exp = BASELINE;
-  const sd = Math.sqrt(exp*(1-exp)/Math.max(1,ticks.length));
-  return sd===0?0:((val/100)-exp)/sd;
-}
-function analyze(n){
-  const d = ticks.slice(-n);
-  if(!d.length) return null;
-  const cnt = Array(10).fill(0), gap = Array(10).fill(0);
-  d.forEach(t=>{ cnt[t.digit]++; gap.forEach((_,i)=>gap[i]=i===t.digit?0:gap[i]+1); });
-  return {
-    stats: cnt.map((c,i)=>({
-      digit:i,
-      matchPct: +(c/d.length*100).toFixed(1),
-      differPct: +((1-c/d.length)*100).toFixed(1),
-      streak: gap[i],
-      zScore: zScore(c/d.length)
-    })),
-    count: d.length
-  };
-}
-function render(){
-  const a = analyze(parseInt(windowSel.value));
-  if(!a) return;
-  
-  $('heatBody').innerHTML = a.stats.map(d=>{
-    let cls = '';
-    if(d.zScore>1.5) cls='heat-hot';
-    if(d.zScore<-1.5) cls='heat-cold';
-    if(d.streak>20) cls='heat-overdue';
-    let status = 'NORMAL';
-    if(d.zScore>1.5) status='HOT';
-    if(d.zScore<-1.5) status='COLD';
-    return `<tr class="${cls}">
-      <td><strong>${d.digit}</strong></td>
-      <td>${d.matchPct}%</td>
-      <td>${d.matchPct}%</td>
-      <td>${d.differPct}%</td>
-      <td>${d.streak}</td>
-      <td>${d.zScore.toFixed(2)}</td>
-      <td>${status}</td>
-    </tr>`;
-  }).join('');
-  
-  const hot = a.stats.filter(d=>d.zScore>1.5).sort((x,y)=>y.zScore-x.zScore);
-  const cold = a.stats.filter(d=>d.zScore<-1.5).sort((x,y)=>x.zScore-y.zScore);
-  const overdue = a.stats.filter(d=>d.streak>15).sort((x,y)=>y.streak-x.streak);
-  
-  $('hotList').innerHTML = `<div style="color:var(--ok);font-weight:600">🔥 Hot:</div>
-    ${hot.length?hot.map(d=>`Digit ${d.digit} (${d.matchPct}%)`).join(', '):'None'}`;
-  $('coldList').innerHTML = `<div style="color:var(--bad);font-weight:600">❄️ Cold:</div>
-    ${cold.length?cold.map(d=>`Digit ${d.digit} (${d.matchPct}%)`).join(', '):'None'}`;
-  $('overdueList').innerHTML = `<div style="color:var(--warn);font-weight:600">⚠️ Overdue:</div>
-    ${overdue.length?overdue.map(d=>`Digit ${d.digit} — ${d.streak} ticks absent`).join(', '):'None'}
-    <div class="alert">Overdue ≠ guaranteed reversal</div>`;
-  
-  const top = a.stats.reduce((m,d)=>d.zScore>m.zScore?d:m,{zScore:0});
-  const bot = a.stats.reduce((m,d)=>d.zScore<m.zScore?d:m,{zScore:0});
-  const score = Math.min(100, Math.round(Math.abs(top.zScore)*20 + Math.min(30, ticks.length/3)));
-  
-  $('insightScore').textContent = ticks.length>=30 ? score : '—';
-  $('sampleSize').textContent = ticks.length;
-  
-  if(ticks.length>=30){
-    if(top.zScore>1.5){
-      $('signalBox').innerHTML = `<div class="badge badge-ok" style="font-size:14px">STRONG MATCHES SIGNAL</div>
-        <div style="margin-top:8px"><strong>🎯 Digit ${top.digit}</strong><br>
-        Frequency: ${top.matchPct}% (Expected ~10%)<br>
-        Deviation: Significant<br>
-        Sample: ${a.count} ticks</div>`;
-    } else if(bot.zScore<-1.5){
-      $('signalBox').innerHTML = `<div class="badge badge-bad" style="font-size:14px">STRONG DIFFERS SIGNAL</div>
-        <div style="margin-top:8px"><strong>🛑 NOT Digit ${bot.digit}</strong><br>
-        Absence: ${bot.streak} ticks<br>
-        Frequency: ${bot.matchPct}% (Below baseline)<br>
-        Sample: ${a.count} ticks</div>`;
-    } else {
-      $('signalBox').innerHTML = `<div style="color:var(--muted)">No strong signal detected — market balanced</div>`;
-    }
-  } else {
-    $('signalBox').innerHTML = `<div style="color:var(--muted)">Need ${30-ticks.length} more ticks...</div>`;
-  }
-}
-
-function connect(){
-  if(isRunning) return;
-  isRunning = true;
-  ticks = [];
-  ws = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
-  ws.onopen = () => {
-    $('connStatus').textContent = '✅ Connected — Receiving data...';
-    ws.send(JSON.stringify({ticks:symbolSel.value,subscribe:1}));
-    $('currSymbol').textContent = symbolSel.value;
-    goBtn.disabled = true; stopBtn.disabled = false;
-  };
-  ws.onmessage = (e) => {
-    const d = JSON.parse(e.data);
-    if(d.tick){
-      const dg = getDigit(d.tick.quote);
-      if(dg!==null){
-        ticks.push({digit:dg,price:d.tick.quote});
-        if(ticks.length>500) ticks.shift();
-        $('currPrice').textContent = d.tick.quote;
-        $('lastDigit').textContent = dg;
-        render();
-      }
-    }
-  };
-  ws.onclose = () => {
-    isRunning = false;
-    goBtn.disabled = false; stopBtn.disabled = true;
-    $('connStatus').textContent = 'Disconnected — Click START';
-  };
-}
-function disconnect(){ if(ws) ws.close(); }
-
-goBtn.onclick = connect;
-stopBtn.onclick = disconnect;
-windowSel.onchange = render;
-symbolSel.onchange = ()=>{ if(isRunning) disconnect(); };
-</script>
-</body>
+        <div id="modal_root" class="modal-root"></div>
+        <div id="popup_root" class="popup-root"></div>
+        <div id="root"></div>
+        <!-- LiveChat script -->
+        <script type="text/javascript" defer>
+            window.__lc = window.__lc || {};
+            window.__lc.license = 12049137;
+            window.__lc.asyncInit = true;
+            (function (n, t, c) {
+                function i(n) {
+                    return e._h ? e._h.apply(null, n) : e._q.push(n);
+                }
+                var e = {
+                    _q: [],
+                    _h: null,
+                    _v: '2.0',
+                    on: function () {
+                        i(['on', c.call(arguments)]);
+                    },
+                    once: function () {
+                        i(['once', c.call(arguments)]);
+                    },
+                    off: function () {
+                        i(['off', c.call(arguments)]);
+                    },
+                    get: function () {
+                        if (!e._h) throw new Error('[LiveChatWidget] You can’t use getters before load.');
+                        return i(['get', c.call(arguments)]);
+                    },
+                    call: function () {
+                        i(['call', c.call(arguments)]);
+                    },
+                    init: function () {
+                        setTimeout(() => {
+                            var n = t.createElement('script');
+                            ((n.async = !0),
+                                (n.type = 'text/javascript'),
+                                (n.src = 'https://cdn.livechatinc.com/tracking.js'),
+                                t.head.appendChild(n));
+                        }, 3000);
+                    },
+                };
+                (!n.__lc.asyncInit && e.init(), (n.LiveChatWidget = n.LiveChatWidget || e));
+            })(window, document, [].slice);
+        </script>
+        <!-- End LiveChat script -->
+    </body>
 </html>
