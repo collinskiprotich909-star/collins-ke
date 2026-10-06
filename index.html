@@ -1,165 +1,99 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Deriv Trader</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,sans-serif;}
-body{background:#0f111a;color:#fff;padding:20px;max-width:600px;margin:0 auto;}
-h1{color:#4ade80;margin-bottom:20px;}
-.box{background:#1a1d2b;padding:20px;border-radius:12px;margin-bottom:15px;}
-button{background:#16a34a;color:#fff;border:none;padding:14px 24px;border-radius:8px;font-size:18px;cursor:pointer;width:100%;}
-button.running{background:#dc2626;}
-input,select{width:100%;padding:12px;margin:8px 0;background:#24283b;border:none;color:#fff;border-radius:6px;}
-.log{background:#0a0c14;padding:15px;border-radius:8px;margin-top:15px;font-family:monospace;font-size:13px;max-height:300px;overflow-y:auto;}
-.ok{color:#4ade80;}
-.no{color:#f87171;}
-.info{color:#60a5fa;}
-</style>
-</head>
-<body>
+<!doctype html>
+<html lang="en" dir="auto" class="light">
+    <head>
+        <!-- Google Tag Manager -->
+        <script>
+            (function (w, d, s, l, i) {
+                w[l] = w[l] || [];
+                w[l].push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
+                var f = d.getElementsByTagName(s)[0],
+                    j = d.createElement(s),
+                    dl = l != 'dataLayer' ? '&l=' + l : '';
+                j.async = true;
+                j.src = 'https://www.googletagmanager.com/gtm.js?id=' + i + dl;
+                f.parentNode.insertBefore(j, f);
+            })(window, document, 'script', 'dataLayer', 'GTM-KV9538TF');
+        </script>
+        <!-- End Google Tag Manager -->
 
-<h1>🎯 AI Deriv Trader — LIVE</h1>
+        <meta charset="UTF-8" />
+        <link rel="icon" type="image/svg+xml" href="<%= assetPrefix %>/deriv-logo.svg" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+        <meta name="title" content="Automate Your Trades | Deriv Bot" />
+        <meta
+            name="description"
+            content="Import your current bot or learn how to create a trading bot from scratch with our detailed guides, FAQs, and tutorials. Start with a quick strategy!"
+        />
+        <meta property="og:title" content="Deriv Bot" />
+        <meta
+            property="og:description"
+            content="Import your current bot or learn how to create a trading bot from scratch with our detailed guides, FAQs, and tutorials. Start with a quick strategy!"
+        />
+        <title>Automate Your Trades | Deriv Bot</title>
+        <style>
+            :root {
+                font-size: 62.5%;
+            }
+        </style>
+    </head>
 
-<div class="box">
-  <h3>Connection</h3>
-  <select id="symbol">
-    <option value="R_100">Volatility 100</option>
-    <option value="R_75">Volatility 75</option>
-  </select>
-  <br><br>
-  <button id="btn" onclick="startStop()">▶ START TRADER</button>
-</div>
+    <body class="body theme theme--light">
+        <!-- Google Tag Manager (noscript) -->
+        <noscript
+            ><iframe
+                src="https://www.googletagmanager.com/ns.html?id=GTM-KV9538TF"
+                height="0"
+                width="0"
+                style="display: none; visibility: hidden"
+            ></iframe
+        ></noscript>
+        <!-- End Google Tag Manager (noscript) -->
 
-<div class="box">
-  <h3>Live Data</h3>
-  <p style="font-size:24px;margin:10px 0;">Last Digit: <span id="digit" class="ok">—</span></p>
-  <p>Ticks Received: <span id="count">0</span></p>
-  <p>Recommendation: <span id="signal">—</span></p>
-</div>
-
-<div class="box">
-  <h3>Log</h3>
-  <div class="log" id="log"></div>
-</div>
-
-<script>
-let ws = null;
-let running = false;
-let history = [];
-const logDiv = document.getElementById('log');
-
-function log(text, type='info') {
-  const t = new Date().toLocaleTimeString();
-  logDiv.innerHTML = `<div class="${type}">[${t}] ${text}</div>` + logDiv.innerHTML;
-}
-
-function connect() {
-  return new Promise((resolve, reject) => {
-    log('Connecting to Deriv...', 'info');
-    ws = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
-    
-    ws.onopen = () => {
-      log('✅ CONNECTED SUCCESSFULLY!', 'ok');
-      resolve();
-    };
-    
-    ws.onclose = () => {
-      log('🔌 Connection closed', 'no');
-      running = false;
-      document.getElementById('btn').textContent = '▶ START TRADER';
-      document.getElementById('btn').classList.remove('running');
-    };
-    
-    ws.onerror = (e) => {
-      log('❌ Connection failed — try Chrome browser', 'no');
-      reject(e);
-    };
-    
-    ws.onmessage = handleMessage;
-  });
-}
-
-function handleMessage(msg) {
-  try {
-    const data = JSON.parse(msg.data);
-    
-    if(data.msg_type === 'tick' && data.tick) {
-      const digit = data.tick.last_digit;
-      history.push(digit);
-      if(history.length > 30) history.shift();
-      
-      document.getElementById('digit').textContent = digit;
-      document.getElementById('count').textContent = history.length;
-      
-      if(history.length >= 10) analyze();
-    }
-    
-    if(data.error) {
-      log(`API Error: ${data.error.message}`, 'no');
-    }
-  } catch(e) {
-    log(`Error: ${e.message}`, 'no');
-  }
-}
-
-function analyze() {
-  // Count each digit
-  const freq = Array(10).fill(0);
-  history.forEach(d => freq[d]++);
-  
-  // Find most frequent
-  let maxCount = 0, hotDigit = 0;
-  for(let i = 0; i < 10; i++) {
-    if(freq[i] > maxCount) {
-      maxCount = freq[i];
-      hotDigit = i;
-    }
-  }
-  
-  // Even/Odd streak
-  let evenStreak = 0, oddStreak = 0;
-  for(let i = history.length - 1; i >= 0; i--) {
-    if(history[i] % 2 === 0) { if(oddStreak) break; evenStreak++; }
-    else { if(evenStreak) break; oddStreak++; }
-  }
-  
-  // Make recommendation
-  let signal = 'Collecting...';
-  if(maxCount >= 4) signal = `MATCH ${hotDigit} (freq: ${maxCount})`;
-  else if(evenStreak >= 3) signal = 'BET ODD';
-  else if(oddStreak >= 3) signal = 'BET EVEN';
-  
-  document.getElementById('signal').textContent = signal;
-}
-
-async function startStop() {
-  if(!running) {
-    running = true;
-    document.getElementById('btn').textContent = '⏹ STOP TRADER';
-    document.getElementById('btn').classList.add('running');
-    
-    try {
-      await connect();
-      ws.send(JSON.stringify({
-        ticks: document.getElementById('symbol').value,
-        subscribe: 1
-      }));
-      log('📡 Subscribed to ticks — waiting for data...', 'info');
-    } catch(e) {
-      running = false;
-      document.getElementById('btn').textContent = '▶ START TRADER';
-      document.getElementById('btn').classList.remove('running');
-    }
-  } else {
-    if(ws) ws.close();
-    running = false;
-    document.getElementById('btn').textContent = '▶ START TRADER';
-    document.getElementById('btn').classList.remove('running');
-    log('⏹ Stopped by user', 'info');
-  }
-}
-</script>
-</body>
+        <div id="modal_root" class="modal-root"></div>
+        <div id="popup_root" class="popup-root"></div>
+        <div id="root"></div>
+        <!-- LiveChat script -->
+        <script type="text/javascript" defer>
+            window.__lc = window.__lc || {};
+            window.__lc.license = 12049137;
+            window.__lc.asyncInit = true;
+            (function (n, t, c) {
+                function i(n) {
+                    return e._h ? e._h.apply(null, n) : e._q.push(n);
+                }
+                var e = {
+                    _q: [],
+                    _h: null,
+                    _v: '2.0',
+                    on: function () {
+                        i(['on', c.call(arguments)]);
+                    },
+                    once: function () {
+                        i(['once', c.call(arguments)]);
+                    },
+                    off: function () {
+                        i(['off', c.call(arguments)]);
+                    },
+                    get: function () {
+                        if (!e._h) throw new Error('[LiveChatWidget] You can’t use getters before load.');
+                        return i(['get', c.call(arguments)]);
+                    },
+                    call: function () {
+                        i(['call', c.call(arguments)]);
+                    },
+                    init: function () {
+                        setTimeout(() => {
+                            var n = t.createElement('script');
+                            ((n.async = !0),
+                                (n.type = 'text/javascript'),
+                                (n.src = 'https://cdn.livechatinc.com/tracking.js'),
+                                t.head.appendChild(n));
+                        }, 3000);
+                    },
+                };
+                (!n.__lc.asyncInit && e.init(), (n.LiveChatWidget = n.LiveChatWidget || e));
+            })(window, document, [].slice);
+        </script>
+        <!-- End LiveChat script -->
+    </body>
 </html>
