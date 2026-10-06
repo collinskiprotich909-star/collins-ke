@@ -158,24 +158,36 @@ function log(msg, type='info') {
 
 function connect() {
   return new Promise((resolve, reject) => {
-    ws = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
+    // ✅ Connect through local proxy — browser won't block
+    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.host;
+    ws = new WebSocket(`${proto}//${host}/deriv-ws?app_id=1089`);
     
     ws.onopen = () => {
-      log('✅ Connected to Deriv API','info');
+      log('✅ Connected to Deriv API — waiting for ticks...', 'info');
       resolve();
     };
     
-    ws.onclose = function(evt) {
-      log(`🔌 Connection closed. Code: ${evt.code}`, 'warn');
-      isRunning = false;
-      toggleBtn.textContent = '▶ START AI TRADER';
-      toggleBtn.classList.remove('running');
-      toggleBtn.classList.add('primary');
+    ws.onclose = (evt) => {
+      log(`🔌 Closed (code: ${evt.code}) — retrying in 3s...`, 'warn');
+      if(isRunning) {
+        setTimeout(() => isRunning && toggleBot(), 3000);
+      }
     };
     
-    ws.onerror = function(err) {
-      log(`❌ Connection error — browser may be blocking it`, 'warn');
-      reject(err);
+    ws.onerror = (err) => {
+      log('❌ Proxy failed — fallback direct connection...', 'warn');
+      // Fallback: try direct connection
+      try {
+        ws = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=63451');
+        ws.onopen = () => {
+          log('✅ Connected via direct fallback!', 'info');
+          resolve();
+        };
+      } catch(e) {
+        log('❌ All connections blocked — use Deriv App Builder instead', 'warn');
+        reject(e);
+      }
     };
     
     ws.onmessage = handleMessage;
