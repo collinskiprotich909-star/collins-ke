@@ -1,6 +1,13 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
-  "outputDirectory": ".",
-  "framework": null
+  "routes": [
+    {
+      "src": "/deriv-ws",
+      "dest": "wss://ws.binaryws.com/websockets/v3",
+      "headers": {
+        "Upgrade": "$http_upgrade",
+        "Connection": "upgrade"
+      }
+    }
+  ]
 }
