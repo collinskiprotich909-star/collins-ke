@@ -1,12 +1,16 @@
- {
-  "name": "collins-ke",
+{
+  "name": "collins-ke-deriv-tool",
   "version": "1.0.0",
   "description": "Advanced Deriv Matches & Differs Analysis Tool",
+  "main": "index.html",
   "scripts": {
     "dev": "npx serve .",
-    "build": "echo 'Static site ready'"
+    "build": "echo 'Static site built successfully'",
+    "preview": "npx serve ."
   },
-  "keywords": ["deriv", "trading", "analysis"],
+  "keywords": ["deriv", "trading", "matches", "differs", "analysis"],
   "author": "Collins Kiprotich",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {},
+  "dependencies": {}
 }
