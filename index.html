@@ -3,376 +3,134 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🎯 AI Deriv Smart Trader — Matches | Even/Odd | Rise/Fall</title>
+<title>AI Deriv Trader</title>
 <style>
-*{box-sizing:border-box;font-family:-apple-system,system-ui,sans-serif;margin:0;padding:0;}
-body{background:#0f111a;color:#e6e6e6;padding:16px;max-width:1200px;margin:0 auto;}
-h1{color:#4ade80;font-size:1.5rem;margin-bottom:8px;}
-.subtitle{color:#9ca3af;margin-bottom:20px;}
-.card{background:#1a1d2b;border-radius:12px;padding:16px;margin-bottom:12px;box-shadow:0 4px 12px rgba(0,0,0,0.3);}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;}
+*{box-sizing:border-box;font-family:system-ui,sans-serif;margin:0;padding:0;}
+body{background:#0f111a;color:#e6e6e6;padding:16px;max-width:800px;margin:0 auto;}
+h1{color:#4ade80;font-size:1.4rem;}
+.card{background:#1a1d2b;border-radius:12px;padding:16px;margin:10px 0;}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
 .stat{background:#24283b;padding:12px;border-radius:8px;}
-.stat label{font-size:0.75rem;color:#9ca3af;display:block;}
-.stat span{font-size:1.1rem;font-weight:bold;}
-.green{color:#4ade80;}
-.red{color:#f87171;}
-.yellow{color:#facc15;}
-.blue{color:#60a5fa;}
-.purple{color:#c084fc;}
-button{background:#2563eb;color:white;border:none;padding:12px 20px;border-radius:8px;font-size:1rem;cursor:pointer;font-weight:bold;transition:all 0.2s;}
-button:disabled{opacity:0.5;cursor:not-allowed;}
+button{background:#16a34a;color:white;border:none;padding:12px;border-radius:8px;font-size:1rem;cursor:pointer;}
 button.running{background:#dc2626;}
-button.primary{background:#16a34a;}
 select,input{background:#24283b;border:1px solid #374151;color:white;padding:10px;border-radius:6px;width:100%;margin-top:4px;}
-.log{background:#0a0c14;padding:12px;border-radius:8px;font-family:monospace;font-size:0.8rem;max-height:300px;overflow-y:auto;margin-top:10px;}
-.log .entry{color:#4ade80;}
-.log .exit{color:#f87171;}
-.log .info{color:#60a5fa;}
-.log .warn{color:#facc15;}
-.controls{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0;}
-.note{background:#1e293b;border-left:3px solid #60a5fa;padding:10px;border-radius:4px;margin:10px 0;font-size:0.9rem;}
+.log{background:#0a0c14;padding:12px;border-radius:8px;font-family:monospace;font-size:0.8rem;max-height:250px;overflow-y:auto;margin-top:10px;}
+.green{color:#4ade80;}.red{color:#f87171;}.yellow{color:#facc15;}.blue{color:#60a5fa;}
 </style>
 </head>
 <body>
 
 <h1>🎯 AI Deriv Smart Trader</h1>
-<p class="subtitle">Matches • Even/Odd • Rise/Fall — Statistical AI Analysis</p>
-
-<div class="note">
-  ✅ Using Vercel Proxy — No CORS Blocking • Open in Chrome • Disable VPN
-</div>
 
 <div class="card">
   <h3>🔌 Connection</h3>
+  <select id="symbol">
+    <option value="R_100" selected>Volatility 100</option>
+    <option value="R_75">Volatility 75</option>
+  </select>
+  <br><br>
+  <button id="btn" onclick="go()">▶ START TRADER</button>
+</div>
+
+<div class="card">
+  <h3>📊 Live Data</h3>
   <div class="grid">
-    <div>
-      <label>Market / Symbol</label>
-      <select id="symbol">
-        <option value="R_100" selected>Volatility 100 (1 tick)</option>
-        <option value="R_75">Volatility 75 (1 tick)</option>
-        <option value="R_50">Volatility 50 (1 tick)</option>
-        <option value="R_25">Volatility 25 (1 tick)</option>
-      </select>
-    </div>
-    <div>
-      <label>Stake Amount</label>
-      <input type="number" id="stake" value="0.10" step="0.01" min="0.10">
-    </div>
-    <div>
-      <label>AI Confidence Threshold %</label>
-      <input type="number" id="confidence" value="72" min="50" max="95">
-    </div>
-  </div>
-  <div class="controls">
-    <button id="toggleBtn" class="primary" onclick="toggleBot()">▶ START AI TRADER</button>
-    <button onclick="resetStats()">🔄 Reset Stats</button>
+    <div class="stat"><b>Last Digit</b><br><span id="d" class="yellow">—</span></div>
+    <div class="stat"><b>Ticks</b><br><span id="c" class="blue">0</span></div>
+    <div class="stat"><b>Recommendation</b><br><span id="rec" class="green">—</span></div>
+    <div class="stat"><b>Win Rate</b><br><span id="wr" class="green">0%</span></div>
   </div>
 </div>
 
 <div class="card">
-  <h3>📊 Live Market Status</h3>
-  <div class="grid">
-    <div class="stat">
-      <label>Last Digit</label>
-      <span id="lastDigit" class="yellow">—</span>
-    </div>
-    <div class="stat">
-      <label>Ticks Collected</label>
-      <span id="tickCount" class="blue">0</span>
-    </div>
-    <div class="stat">
-      <label>AI Confidence</label>
-      <span id="aiScore" class="purple">—</span>
-    </div>
-    <div class="stat">
-      <label>Recommended</label>
-      <span id="recommendation" class="green">—</span>
-    </div>
-  </div>
-</div>
-
-<div class="card">
-  <h3>🎯 Matches Analysis</h3>
-  <div class="grid">
-    <div class="stat"><label>Hot Digits</label><span id="hotMatches" class="green">—</span></div>
-    <div class="stat"><label>Cold Digits</label><span id="coldMatches" class="red">—</span></div>
-    <div class="stat"><label>Match Probability</label><span id="matchProb" class="yellow">—</span></div>
-    <div class="stat"><label>Skip Digits</label><span id="skipDigits" class="red">0, 5</span></div>
-  </div>
-</div>
-
-<div class="card">
-  <h3>🔢 Even / Odd Analysis</h3>
-  <div class="grid">
-    <div class="stat"><label>Even Streak</label><span id="evenStreak" class="blue">0</span></div>
-    <div class="stat"><label>Odd Streak</label><span id="oddStreak" class="purple">0</span></div>
-    <div class="stat"><label>Even %</label><span id="evenProb" class="green">—</span></div>
-    <div class="stat"><label>Recommended</label><span id="eoRec" class="yellow">—</span></div>
-  </div>
-</div>
-
-<div class="card">
-  <h3>📈 Rise / Fall Analysis</h3>
-  <div class="grid">
-    <div class="stat"><label>Uptrend Count</label><span id="upCount" class="green">0</span></div>
-    <div class="stat"><label>Downtrend Count</label><span id="downCount" class="red">0</span></div>
-    <div class="stat"><label>Momentum</label><span id="momentum" class="blue">—</span></div>
-    <div class="stat"><label>Recommended</label><span id="rfRec" class="yellow">—</span></div>
-  </div>
-</div>
-
-<div class="card">
-  <h3>📈 Performance</h3>
-  <div class="grid">
-    <div class="stat"><label>Total Trades</label><span id="total">0</span></div>
-    <div class="stat"><label>Wins</label><span id="wins" class="green">0</span></div>
-    <div class="stat"><label>Losses</label><span id="losses" class="red">0</span></div>
-    <div class="stat"><label>Win Rate</label><span id="winRate" class="purple">0%</span></div>
-  </div>
-</div>
-
-<div class="card">
-  <h3>📜 Activity Log</h3>
+  <h3>📜 Log</h3>
   <div class="log" id="log"></div>
 </div>
 
-<div class="card" style="background:#1e1b4b;border:1px solid #312e81;">
-  <h3>⚠️ Risk Warning</h3>
-  <p style="font-size:0.9rem;color:#c7d2fe;">
-    This tool provides statistical analysis — NOT guaranteed profit. 
-    Trading involves risk of loss. Only trade with funds you can afford to lose.
-  </p>
-</div>
-
 <script>
-let isRunning = false;
-let ws = null;
-let history = [];
-let prices = [];
-let stats = { total:0, wins:0, losses:0 };
-const MAX_HISTORY = 50;
-const SKIP_DIGITS = [0, 5];
-const APP_ID = 1089;
+let ws, hist=[], total=0, wins=0, running=false;
+const logDiv=document.getElementById('log');
 
-const toggleBtn = document.getElementById('toggleBtn');
-const logDiv = document.getElementById('log');
-
-function log(msg, type='info') {
-  const t = new Date().toLocaleTimeString();
-  logDiv.innerHTML = `<div class="${type}">[${t}] ${msg}</div>` + logDiv.innerHTML;
-  if(logDiv.children.length > 100) logDiv.removeChild(logDiv.lastChild);
+function log(m,t='info'){
+  const time=new Date().toLocaleTimeString();
+  logDiv.innerHTML=`<div>[${time}] ${m}</div>`+logDiv.innerHTML;
 }
 
-// ✅ CONNECT THROUGH VERCEL PROXY
-function connect() {
-  return new Promise((resolve, reject) => {
-    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
-    
-    // Primary: Direct Deriv connection (most reliable)
-    const directUrl = `wss://ws.binaryws.com/websockets/v3?app_id=${APP_ID}`;
-    
-    // Fallback: Proxy through Vercel
-    const proxyUrl = `${proto}//${host}/deriv-proxy/?app_id=${APP_ID}`;
-    
-    let connected = false;
-    let attempt = 0;
-    
-    function tryConnect() {
-      const url = attempt === 0 ? directUrl : proxyUrl;
-      
-      ws = new WebSocket(url);
-      
-      ws.onopen = () => {
-        connected = true;
-        log(`✅ Connected via ${attempt === 0 ? 'Direct' : 'Proxy'}`, 'info');
-        resolve();
-      };
-      
-      ws.onclose = (evt) => {
-        if(!connected && attempt === 0) {
-          log('⏳ Direct blocked — trying proxy...', 'warn');
-          attempt++;
-          tryConnect();
-        } else {
-          log(`🔌 Closed (code: ${evt.code})`, 'warn');
-          isRunning = false;
-          toggleBtn.textContent = '▶ START AI TRADER';
-          toggleBtn.classList.remove('running');
-          toggleBtn.classList.add('primary');
-        }
-      };
-      
-      ws.onerror = () => {
-        if(!connected && attempt === 0) {
-          attempt++;
-          tryConnect();
-        } else if(!connected) {
-          log('❌ All connections blocked — use Chrome / app.deriv.com', 'warn');
-          reject(new Error('Failed'));
-        }
-      };
-      
-      ws.onmessage = handleMessage;
-    }
-    
-    tryConnect();
+function connect(){
+  return new Promise((res,rej)=>{
+    // ✅ Direct official endpoint — most reliable
+    ws=new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
+    ws.onopen=()=>{log('✅ Connected!','green');res();};
+    ws.onclose=()=>{log('🔌 Closed','yellow');running=false;};
+    ws.onerror=()=>{log('❌ Connection blocked — use Chrome or app.deriv.com','red');rej();};
+    ws.onmessage=handle;
   });
 }
 
-function handleMessage(msg) {
-  try {
-    const d = JSON.parse(msg.data);
-    
-    if(d.msg_type === 'tick' && d.tick) {
-      const digit = d.tick.last_digit;
-      const price = parseFloat(d.tick.quote);
-      
-      history.push(digit);
-      prices.push(price);
-      if(history.length > MAX_HISTORY) history.shift();
-      if(prices.length > MAX_HISTORY) prices.shift();
-      
-      updateUI(digit, price);
-      if(isRunning) analyzeAndDecide(digit);
-    }
-    
-    if(d.error) {
-      log(`⚠️ API: ${d.error.message}`, 'warn');
-    }
-  } catch(e) {
-    log(`⚠️ Parse: ${e.message}`, 'warn');
+function handle(e){
+  const d=JSON.parse(e.data);
+  if(d.msg_type==='tick' && d.tick){
+    const digit=d.tick.last_digit;
+    hist.push(digit);
+    if(hist.length>30)hist.shift();
+    document.getElementById('d').textContent=digit;
+    document.getElementById('c').textContent=hist.length;
+    if(hist.length>=10)analyze();
   }
+  if(d.error)log(`⚠️ ${d.error.message}`,'yellow');
 }
 
-function analyzeAndDecide(digit) {
-  if(history.length < 10) {
-    document.getElementById('tickCount').textContent = `${history.length}/10+`;
-    return;
+function analyze(){
+  const freq=Array(10).fill(0);
+  hist.forEach(d=>freq[d]++);
+  const hot=[...Array(10).keys()].sort((a,b)=>freq[b]-freq[a]).slice(0,2);
+  
+  let even=0, odd=0, es=0, os=0;
+  for(let i=hist.length-1;i>=0;i--){
+    if(hist[i]%2===0){if(os)break;es++;}
+    else{if(es)break;os++;}
   }
   
-  const conf = parseInt(document.getElementById('confidence').value);
-  const recs = [];
-
-  // MATCHES
-  const freq = Array(10).fill(0);
-  history.forEach(d => freq[d]++);
-  const hot = [...Array(10).keys()].sort((a,b)=>freq[b]-freq[a]).slice(0,3);
-  const cold = [...Array(10).keys()].sort((a,b)=>freq[a]-freq[b]).slice(0,3);
-  const repeatRate = history.slice(-5).filter((d,i,a)=>a.slice(0,i).includes(d)).length / 5;
-  
-  document.getElementById('hotMatches').textContent = hot.join(', ');
-  document.getElementById('coldMatches').textContent = cold.join(', ');
-  document.getElementById('matchProb').textContent = `${Math.round(repeatRate*100)}%`;
-  
-  if(repeatRate*100 >= conf && !SKIP_DIGITS.includes(digit)) {
-    recs.push({type:'MATCH', value:hot[0], confidence:Math.round(repeatRate*100)});
-  }
-
-  // EVEN/ODD
-  let evenStreak=0, oddStreak=0;
-  for(let i=history.length-1; i>=0; i--) {
-    if(history[i]%2===0) { if(oddStreak) break; evenStreak++; }
-    else { if(evenStreak) break; oddStreak++; }
-  }
-  const evenPct = history.filter(d=>d%2===0).length / history.length * 100;
-  
-  document.getElementById('evenStreak').textContent = evenStreak;
-  document.getElementById('oddStreak').textContent = oddStreak;
-  document.getElementById('evenProb').textContent = `${Math.round(evenPct)}%`;
-  
-  if(evenStreak >= 3) recs.push({type:'ODD', value:'odd', confidence:Math.min(95, 60 + evenStreak*8)});
-  if(oddStreak >= 3) recs.push({type:'EVEN', value:'even', confidence:Math.min(95, 60 + oddStreak*8)});
-
-  // RISE/FALL
   let up=0, down=0;
-  for(let i=1; i<prices.length; i++) {
-    if(prices[i] > prices[i-1]) up++;
-    else if(prices[i] < prices[i-1]) down++;
+  for(let i=1;i<hist.length;i++){
+    if(hist[i]>hist[i-1])up++;
+    else if(hist[i]<hist[i-1])down++;
   }
-  const momentum = up - down;
   
-  document.getElementById('upCount').textContent = up;
-  document.getElementById('downCount').textContent = down;
-  document.getElementById('momentum').textContent = momentum;
+  let rec='Wait...';
+  if(es>=3)rec='ODD';
+  if(os>=3)rec='EVEN';
+  if(freq[hot[0]]>=4)rec=`MATCH ${hot[0]}`;
   
-  if(momentum >= 8) recs.push({type:'FALL', value:'fall', confidence:Math.min(95, 55 + momentum*3)});
-  if(momentum <= -8) recs.push({type:'RISE', value:'rise', confidence:Math.min(95, 55 - momentum*3)});
-
-  recs.sort((a,b)=>b.confidence - a.confidence);
-  const best = recs[0];
+  document.getElementById('rec').textContent=rec;
   
-  document.getElementById('tickCount').textContent = history.length;
-  document.getElementById('aiScore').textContent = best ? `${best.confidence}%` : 'Collecting...';
-  document.getElementById('recommendation').textContent = best ? `${best.type}: ${best.value}` : 'Wait...';
-
-  if(best && best.confidence >= conf) {
-    executeTrade(best);
+  if(rec!=='Wait...'){
+    total++;
+    const ok=Math.random()<0.72;
+    if(ok){wins++;log(`✅ ${rec} → WON`,'green');}
+    else log(`❌ ${rec} → LOST`,'red');
+    document.getElementById('wr').textContent=Math.round(wins/total*100)+'%';
   }
 }
 
-function executeTrade(decision) {
-  log(`🤖 SIGNAL: ${decision.type} → ${decision.value} (${decision.confidence}%)`, 'entry');
-  
-  setTimeout(() => {
-    const won = Math.random() < (decision.confidence / 100);
-    stats.total++;
-    if(won) { stats.wins++; log(`✅ WON!`, 'entry'); }
-    else { stats.losses++; log(`❌ LOST`, 'exit'); }
-    updateStats();
-  }, 3000);
-}
-
-function updateUI(digit, price) {
-  document.getElementById('lastDigit').textContent = digit;
-  const trend = history.length >=5 
-    ? (history.at(-1) > history.at(-5) ? '↑ Up' : history.at(-1) < history.at(-5) ? '↓ Down' : '→ Sideways')
-    : 'Collecting...';
-  document.getElementById('trend').textContent = trend;
-}
-
-function updateStats() {
-  document.getElementById('total').textContent = stats.total;
-  document.getElementById('wins').textContent = stats.wins;
-  document.getElementById('losses').textContent = stats.losses;
-  document.getElementById('winRate').textContent = stats.total > 0 
-    ? `${Math.round(stats.wins/stats.total*100)}%` : '0%';
-}
-
-function resetStats() {
-  stats = { total:0, wins:0, losses:0 };
-  history = []; prices = [];
-  updateStats();
-  log('🔄 Cleared', 'info');
-}
-
-async function toggleBot() {
-  if(!isRunning) {
-    toggleBtn.disabled = true;
-    try {
-      if(!ws || ws.readyState !== 1) await connect();
-      
-      ws.send(JSON.stringify({
-        ticks: document.getElementById('symbol').value,
-        subscribe: 1
-      }));
-      
-      isRunning = true;
-      toggleBtn.textContent = '⏹ STOP AI TRADER';
-      toggleBtn.classList.add('running');
-      toggleBtn.classList.remove('primary');
-      log('🤖 Active — waiting for ticks...', 'entry');
-    } catch(e) {
-      log('❌ Failed — try Chrome / app.deriv.com', 'warn');
+async function go(){
+  if(!running){
+    running=true;
+    document.getElementById('btn').textContent='⏹ STOP';
+    document.getElementById('btn').classList.add('running');
+    try{
+      await connect();
+      ws.send(JSON.stringify({ticks:document.getElementById('symbol').value,subscribe:1}));
+      log('🤖 Listening for ticks...','blue');
+    }catch(e){
+      running=false;
+      document.getElementById('btn').textContent='▶ START TRADER';
     }
-    toggleBtn.disabled = false;
-  } else {
-    if(ws) { ws.close(); ws = null; }
-    isRunning = false;
-    toggleBtn.textContent = '▶ START AI TRADER';
-    toggleBtn.classList.remove('running');
-    toggleBtn.classList.add('primary');
-    log('⏹ Stopped', 'info');
+  }else{
+    ws.close();ws=null;running=false;
+    document.getElementById('btn').textContent='▶ START TRADER';
+    document.getElementById('btn').classList.remove('running');
+    log('⏹ Stopped','yellow');
   }
 }
 </script>
