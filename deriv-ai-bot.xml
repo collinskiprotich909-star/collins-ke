@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml xmlns="https://developers.google.com/blockly/xml">
+  <variables>
+    <variable id="stake">stake</variable>
+    <variable id="duration">duration</variable>
+    <variable id="market">market</variable>
+    <variable id="last_digits">last_digits</variable>
+    <variable id="best_digit">best_digit</variable>
+    <variable id="best_percent">best_percent</variable>
+    <variable id="trade_mode">trade_mode</variable>
+    <variable id="confidence">confidence</variable>
+    <variable id="consec_losses">consec_losses</variable>
+    <variable id="max_losses">max_losses</variable>
+  </variables>
+  <block type="trade_definition" id="START" x="50" y="20">
+    <field name="MARKET">volatility 100</field>
+    <field name="STAKE">0.10</field>
+    <field name="DURATION">5</field>
+    <field name="CURRENCY">USD</field>
+    <statement name="INIT">
+      <block type="variables_set" id="init_stake">
+        <field name="VAR" id="stake">stake</field>
+        <value name="VALUE">
+          <block type="math_number" id="stake_val"><field name="NUM">0.10</field></block>
+        </value>
+        <next>
+          <block type="variables_set" id="init_duration">
+            <field name="VAR" id="duration">duration</field>
+            <value name="VALUE">
+              <block type="math_number" id="dur_val"><field name="NUM">5</field></block>
+            </value>
+            <next>
+              <block type="variables_set" id="init_losses">
+                <field name="VAR" id="consec_losses">consec_losses</field>
+                <value name="VALUE">
+                  <block type="math_number" id="zero"><field name="NUM">0</field></block>
+                </value>
+                <next>
+                  <block type="variables_set" id="max_losses_set">
+                    <field name="VAR" id="max_losses">max_losses</field>
+                    <value name="VALUE">
+                      <block type="math_number" id="two"><field name="NUM">2</field></block>
+                    </value>
+                  </block>
+                </next>
+              </block>
+            </next>
+          </block>
+        </next>
+      </block>
+    </statement>
+    <statement name="MAIN_LOOP">
+      <block type="ai_analysis" id="analyze">
+        <field name="MODE">auto</field>
+        <statement name="ANALYSIS">
+          <block type="get_probabilities" id="get_probs">
+            <statement name="RESULT">
+              <block type="find_best_signal" id="find_best">
+                <field name="MIN_CONFIDENCE">10.5</field>
+                <statement name="HAS_SIGNAL">
+                  <block type="if" id="signal_found">
+                    <value name="CONDITION">
+                      <block type="logic_compare">
+                        <field name="OP">GT</field>
+                        <value name="A">
+                          <block type="variables_get"><field name="VAR" id="best_percent">best_percent</field></block>
+                        </value>
+                        <value name="B">
+                          <block type="math_number"><field name="NUM">10.5</field></block>
+                        </value>
+                      </block>
+                    </value>
+                    <statement name="THEN">
+                      <block type="logic_compare" id="check_losses">
+                        <field name="OP">LTE</field>
+                        <value name="A">
+                          <block type="variables_get"><field name="VAR" id="consec_losses">consec_losses</field></block>
+                        </value>
+                        <value name="B">
+                          <block type="variables_get"><field name="VAR" id="max_losses">max_losses</field></block>
+                        </value>
+                        <statement name="THEN">
+                          <block type="execute_trade" id="do_trade">
+                            <field name="RETRY">true</field>
+                            <statement name="ON_SUCCESS">
+                              <block type="variables_set" id="reset_losses">
+                                <field name="VAR" id="consec_losses">consec_losses</field>
+                                <value name="VALUE">
+                                  <block type="math_number"><field name="NUM">0</field></block>
+                                </value>
+                              </block>
+                            </statement>
+                            <statement name="ON_FAIL">
+                              <block type="variables_set" id="inc_losses">
+                                <field name="VAR" id="consec_losses">consec_losses</field>
+                                <value name="VALUE">
+                                  <block type="math_arithmetic">
+                                    <field name="OP">ADD</field>
+                                    <value name="A">
+                                      <block type="variables_get"><field name="VAR" id="consec_losses">consec_losses</field></block>
+                                    </value>
+                                    <value name="B">
+                                      <block type="math_number"><field name="NUM">1</field></block>
+                                    </value>
+                                  </block>
+                                </value>
+                              </block>
+                            </statement>
+                          </block>
+                        </statement>
+                        <statement name="ELSE">
+                          <block type="wait" id="pause">
+                            <field name="SECONDS">60</field>
+                          </block>
+                        </statement>
+                      </block>
+                    </statement>
+                    <statement name="ELSE">
+                      <block type="wait_for_better_signal" id="wait_signal">
+                        <field name="TICKS">3</field>
+                      </block>
+                    </statement>
+                  </block>
+                </statement>
+              </block>
+            </statement>
+          </block>
+        </statement>
+      </block>
+    </statement>
+  </block>
+</xml>
