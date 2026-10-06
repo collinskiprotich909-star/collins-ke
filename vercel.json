@@ -1,13 +1,24 @@
+
 {
   "version": 2,
-  "routes": [
+  "rewrites": [
     {
-      "src": "/deriv-ws",
-      "dest": "wss://ws.binaryws.com/websockets/v3",
-      "headers": {
-        "Upgrade": "$http_upgrade",
-        "Connection": "upgrade"
-      }
+      "source": "/deriv-proxy/(.*)",
+      "destination": "https://ws.binaryws.com/websockets/v3/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/$1"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/deriv-proxy/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "*" }
+      ]
     }
   ]
 }
